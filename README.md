@@ -1,2 +1,0 @@
-# apex.test
-storage test
