@@ -40,7 +40,6 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model,
         messages: safeMessages,
-        temperature: 0.4,
         stream: false,
         max_completion_tokens: 1000
       })
