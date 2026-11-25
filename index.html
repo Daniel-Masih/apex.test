@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GovAI Chat</title>
+  <style>
+    :root { font-family: Inter, system-ui, sans-serif; color: #172033; background: #f5f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .app { width: min(820px, 100%); height: min(780px, calc(100vh - 48px)); background: white; border: 1px solid #dbe2ea; border-radius: 18px; box-shadow: 0 18px 50px rgba(24, 39, 75, .12); display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+    header { padding: 20px 24px; border-bottom: 1px solid #e7ebf0; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    h1 { margin: 0; font-size: 1.25rem; }
+    .status { font-size: .85rem; color: #526071; }
+    #messages { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .message { max-width: 78%; padding: 12px 15px; border-radius: 15px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .user { align-self: flex-end; background: #1257d5; color: white; border-bottom-right-radius: 4px; }
+    .assistant { align-self: flex-start; background: #eef2f7; color: #172033; border-bottom-left-radius: 4px; }
+    .error { align-self: center; background: #fff0f0; color: #9c2424; border: 1px solid #f1c5c5; }
+    form { padding: 18px; border-top: 1px solid #e7ebf0; display: grid; grid-template-columns: 1fr auto; gap: 12px; }
+    textarea { resize: none; min-height: 48px; max-height: 150px; padding: 13px 14px; border: 1px solid #b9c4d0; border-radius: 12px; font: inherit; }
+    textarea:focus { outline: 3px solid rgba(18,87,213,.18); border-color: #1257d5; }
+    button { border: 0; border-radius: 12px; padding: 0 20px; background: #1257d5; color: white; font: inherit; font-weight: 650; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    @media (max-width: 600px) { body { padding: 0; } .app { height: 100vh; border: 0; border-radius: 0; } .message { max-width: 90%; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>GovAI Chat</h1>
+      <span id="status" class="status">Ready</span>
+    </header>
+
+    <section id="messages" aria-live="polite">
+      <div class="message assistant">Hello. Send a message to start a conversation.</div>
+    </section>
+
+    <form id="chatForm">
+      <textarea id="input" aria-label="Message" placeholder="Type a message..." required></textarea>
+      <button id="sendButton" type="submit">Send</button>
+    </form>
+  </main>
+
+  <script>
+    const messages = [
+      { role: "system", content: "You are a helpful assistant. Give clear, concise answers." }
+    ];
+
+    const form = document.getElementById("chatForm");
+    const input = document.getElementById("input");
+    const messagesEl = document.getElementById("messages");
+    const statusEl = document.getElementById("status");
+    const sendButton = document.getElementById("sendButton");
+
+    form.addEventListener("submit", sendMessage);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    async function sendMessage(event) {
+      event.preventDefault();
+      const content = input.value.trim();
+      if (!content) return;
+
+      messages.push({ role: "user", content });
+      addBubble(content, "user");
+      input.value = "";
+      setLoading(true);
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(formatError(data));
+        }
+
+        messages.push({ role: "assistant", content: data.message });
+        addBubble(data.message, "assistant");
+      } catch (error) {
+        addBubble(error.message || "Request failed.", "error");
+      } finally {
+        setLoading(false);
+        input.focus();
+      }
+    }
+
+    function addBubble(text, type) {
+      const div = document.createElement("div");
+      div.className = `message ${type}`;
+      div.textContent = text;
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setLoading(loading) {
+      sendButton.disabled = loading;
+      input.disabled = loading;
+      statusEl.textContent = loading ? "GovAI is responding..." : "Ready";
+    }
+
+    function formatError(data) {
+      if (typeof data?.details === "string") return `${data.error} ${data.details}`;
+      if (data?.details) return `${data.error} ${JSON.stringify(data.details)}`;
+      return data?.error || "Request failed.";
+    }
+  </script>
+</body>
+</html>
