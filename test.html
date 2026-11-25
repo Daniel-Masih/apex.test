@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Oracle API Test</title>
+</head>
+
+<body>
+  <h1>Oracle API Test</h1>
+
+  <button onclick="getData()">Get Data from Oracle</button>
+
+  <pre id="result">Waiting...</pre>
+
+  <script>
+    async function getData() {
+      const result = document.getElementById("result");
+
+      try {
+        result.textContent = "Loading...";
+
+        const response = await fetch(
+          "https://cokapxt01a.kitchener.ca/apex/testwo/webapp-test/hello"
+        );
+
+        const data = await response.json();
+
+        result.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        result.textContent = "ERROR:\n" + error;
+      }
+    }
+  </script>
+</body>
+</html>
